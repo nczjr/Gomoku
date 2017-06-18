@@ -20,8 +20,8 @@ instance Show Point where
 
 instance Show Color where
     show Empty = " _ "
-    show Black = " o "
-    show White = " x "
+    show Black = " X "
+    show White = " O "
 
 makeColumns :: Int -> Int -> [Point]-> [Point]
 makeColumns x y list
@@ -39,10 +39,12 @@ board :: Board
 board = Board 19 (makeBoard 18 18 [])
 
 insertFigure :: Board -> Int -> Int -> Color -> Board
-insertFigure board x y figure
+insertFigure board x y player
     | x > size board || y > size board || x < 0 || y < 0 = board
-    | color (cells board !! x !! y) == Empty = Board 19 (insertF board x y figure)
-    | color (cells board !! x !! y) == figure = board
+    | color (cells board !! x !! y) == Empty = Board 19 (insertF board x y player)
+    | color (cells board !! x !! y) == player = board
+    | color (cells board !! x !! y) == oppositePlayer = board
+    where oppositePlayer = switchPlayer player
 
 
 insertF :: Board -> Int -> Int -> Color -> [[Point]]
@@ -67,22 +69,9 @@ getRandomPosition board player = checkIfMovePossible board player (unsafePerform
 
 checkIfMovePossible :: Board -> Color -> Int -> Int -> Board
 checkIfMovePossible board player x y
+  -- | color (cells board !! x !! y) == Empty = Board 19 (insertF board x y player)
   | color (cells board !! x !! y) == Empty = Board 19 (insertF board x y player)
   | otherwise = getRandomPosition board player
-
-
-newBoard1 = getRandomPosition board Black
-newBoard2 = getRandomPosition newBoard1 Black
-newBoard3 = getRandomPosition newBoard2 Black
-newBoard4 = getRandomPosition newBoard3 Black
-newBoard5 = getRandomPosition newBoard4 Black
-newBoard6 = getRandomPosition newBoard5 Black
-
--- newBoard1 = Board 19 (insertF board 1 1 Black)
--- newBoard2 = Board 19 (insertF newBoard1 2 2 Black)
--- newBoard3 = Board 19 (insertF newBoard2 3 3 Black)
--- newBoard4 = Board 19 (insertF newBoard3 4 4 Black)
--- newBoard5 = Board 19 (insertF newBoard4 5 11 Black)
 
 
 checkForWinInDiagonals :: [[Point]] -> Int -> Point -> Bool
@@ -105,30 +94,22 @@ checkForWinInRows (Board size cells) number point
     where num = number+1
 
 
-checkIfWinner :: [Int] -> Bool
-checkIfWinner list
-  | (maximum list - (minimum list)) == 4 = True
-  | otherwise = False
-
-checkIfWinner1 :: [Int] -> Int -> Bool
-checkIfWinner1 (x:[]) sum
+checkIfWinner :: [Int] -> Int -> Bool
+checkIfWinner (x:[]) sum
   | sum ==4 = True
   | otherwise = False
-checkIfWinner1 (x:y:xs) sum
+checkIfWinner (x:y:xs) sum
   | sum == 4 = True
-  | y == x+1 = checkIfWinner1 (y:xs) (sum+1)
-  | otherwise = checkIfWinner1 (y:xs) 0
+  | y == x+1 = checkIfWinner (y:xs) (sum+1)
+  | otherwise = checkIfWinner (y:xs) 0
 
 
 getIndexes :: Point -> [[Point]] -> Int -> [Int]
 getIndexes (Point x y color) line number = elemIndices (Point 0 0 color) (line !! number)
 
-
-
 checkIf5 :: [Int] -> Bool
 checkIf5 list
-  | (length list) == 5 = checkIfWinner list
-  | (length list) >5 = checkIfWinner1 list 0
+  | (length list) >=5 = checkIfWinner list 0
   | otherwise = False
 
 rotateBoard :: [[Point]] -> [[Point]]
@@ -136,7 +117,6 @@ rotateBoard = transpose . reverse
 
 getCells :: Board -> [[Point]]
 getCells (Board size cells) = cells
-
 
 diagonals :: [[a]] -> [[a]]
 diagonals = tail . go [] where
@@ -156,22 +136,15 @@ isGameWon board player = do
     else do False
 
 
-check = do
-  let player = Black
-  let f = isGameWon newBoard5 player
-  f
-
-
-
 playersMode color board = do
   let player = color
   putStrLn ""
-  putStrLn (  show player ++ " move")
+  putStrLn (  show player ++ "player move")
   putStrLn "Choose X position "
   x <-getLine
   putStrLn "Choose Y position "
   y <-getLine
-  let newBoard = Board 19 (insertF board ((read x :: Int)-1) ((read y :: Int) -1) player)
+  let newBoard = insertFigure board ((read x :: Int)-1) ((read y :: Int) -1) player
   putStrLn $ show newBoard
   if (isGameWon newBoard player) then do putStrLn $ "Player " ++ show player ++ " won"
     else do
@@ -182,13 +155,13 @@ playersMode color board = do
 playerComputerMode color board = do
   let player = color
   putStrLn ""
-  putStrLn (  show player ++ " move")
+  putStrLn (  show player ++ "player move")
   if (player == White) then do
     putStrLn "Choose X position "
     x <-getLine
     putStrLn "Choose Y position "
     y <-getLine
-    let newBoard = Board 19 (insertF board ((read x :: Int)-1) ((read y :: Int) -1) player)
+    let newBoard = insertFigure board ((read x :: Int)-1) ((read y :: Int) -1) player
     putStrLn $ show newBoard
     if (isGameWon newBoard player) then do putStrLn $ "Player " ++ show player ++ " won"
       else do
@@ -204,13 +177,14 @@ playerComputerMode color board = do
 
 
 computersMode player board = do
-  putStrLn $ show player ++ " move"
+  putStrLn $ show player ++ "player move"
   let newBoard = getRandomPosition board player
   putStrLn $ show newBoard
   if (isGameWon newBoard player) then do putStrLn $ "Player " ++ show player ++ " won"
     else do
       let newPlayer = switchPlayer player
       computersMode newPlayer newBoard
+
 main = do
   putStr "Choose the mode : \n 1) Player vs player \n 2) Player vs Computer \n 3) Computer vs Computer \n"
   line <- getLine
